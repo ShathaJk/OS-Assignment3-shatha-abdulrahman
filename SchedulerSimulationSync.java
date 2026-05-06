@@ -52,8 +52,8 @@ class SharedResources {
     public static void incrementContextSwitch() {
         // TODO: Protect this critical section with a lock
         // RACE CONDITION: Multiple threads might read and write simultaneously!
-        // Protect context switch counter
 
+        // Protect context switch counter using lock
         lock.lock();
         try {
             contextSwitchCount++;
@@ -63,9 +63,9 @@ class SharedResources {
     }
 
     // Method to increment completed process counter
+
     public static void incrementCompletedProcess() {
-        // TODO: Protect this critical section with a lock
-        // Protect completed process counter
+        // Protect completed process counter using lock
         lock.lock();
         try {
             completedProcessCount++;
@@ -75,10 +75,8 @@ class SharedResources {
     }
 
     // Method to add waiting time
+    // Protect total waiting time using lock
     public static void addWaitingTime(long time) {
-        // TODO: Protect this critical section with a lock
-        // Protect waiting time accumulation
-
         lock.lock();
         try {
             totalWaitingTime += time;
@@ -86,6 +84,8 @@ class SharedResources {
             lock.unlock();
         }
     }
+
+}
 
     // Method to log execution
     public static void logExecution(String message) {
