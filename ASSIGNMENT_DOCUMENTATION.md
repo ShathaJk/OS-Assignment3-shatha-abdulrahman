@@ -185,52 +185,77 @@ However, because coarse-grained locking is safer, simpler to maintain, and adequ
 ### Critical Section #1: Counter Variables
 
 **Which variables**: 
-
+contextSwitchCount, completedProcessCount, and totalWaitingTime
 **Why they need protection**: 
-
+Several process threads share these variables. Inaccurate final statistics and race circumstances could result from concurrent revisions.
 **Synchronization mechanism used**: 
-
+ReentrantLock
 **Code snippet**:
 ```java
 // Paste your implementation here
 ```
+public static final ReentrantLock lock = new ReentrantLock();
 
+public static void incrementContextSwitch() {
+    lock.lock();
+    try {
+        contextSwitchCount++;
+    } finally {
+        lock.unlock();
+    }
+}
 **Justification**: 
-
+In order to prevent inconsistent values, the lock guarantees mutual exclusion, allowing only one thread to update shared counts at a time.
 ---
 
 ### Critical Section #2: Execution Log
 
 **What resource**: 
-
+executionLog ArrayList
 **Why it needs protection**: 
+It is not thread-safe to use an ArrayList. The log could be corrupted or exceptions could be thrown if many threads write to the list at the same time.
 
 **Synchronization mechanism used**: 
-
+ReentrantLock
 **Code snippet**:
 ```java
 // Paste your implementation here
 ```
+public static void logExecution(String message) {
+    lock.lock();
+    try {
+        executionLog.add(message);
+    } finally {
+        lock.unlock();
+    }
+}
 
 **Justification**: 
-
+The lock prevents concurrent modifications and guarantees safe access to the execution log.
 ---
 
 ### Critical Section #3: CPU Semaphore
 
 **Purpose of semaphore**: 
-
+to restrict CPU access and limit the number of processes that can run simultaneously.
 **Number of permits and why**: 
-
+Because the scheduler mimics a single CPU, there is only one permit.
 **Where implemented**: 
-
+Inside the run() and runToCompletion() methods.
 **Code snippet**:
 ```java
 // Paste your implementation here
 ```
+SharedResources.cpuSemaphore.acquire();
+
+try {
+    // process execution
+} finally {
+    SharedResources.cpuSemaphore.release();
+}
 
 **Effect on program behavior**: 
-
+The semaphore guarantees consistent execution behavior and stops many processes from using the CPU at once.
 ---
 
 ## Part 4: Testing and Verification (2 marks)
@@ -241,49 +266,97 @@ However, because coarse-grained locking is safer, simpler to maintain, and adequ
 **Testing procedure**: 
 ```bash
 # Commands used (run the program at least 5 times)
+javac SchedulerSimulationSync.java
+java SchedulerSimulationSync
+
+# Repeated 5 times
 ```
 
 **Results**: 
 (Show that running multiple times produces consistent, correct results)
+There were no crashes, deadlocks, or corrupted data during any of the executions.
+Every procedure completed successfully, and synchronization statistics were consistently produced.
 
+The outcomes consistently demonstrated:
+
+15 processes in all were completed.
+No processes are absent.
+Appropriate queue behavior
+Consistent context-switching behavior
+No shared data values that are inconsistent
 **Why synchronization is necessary**: 
 (Explain what race conditions COULD occur without synchronization, even if you didn't observe them. Explain which shared resources need protection and why.)
+Race conditions could result from several threads accessing shared resources at the same time in the absence of synchronization.
 
+Shared resources that need to be protected include:
+
+Context Switch Counter in Ready Queue
+Variables of Waiting Time
+Logs of Execution
+
+Processes may be lost or duplicated if two threads alter the ready queue simultaneously.
+Likewise, updating counters such as:
+contextSwitchCount++;
+Due to the possibility of multiple threads updating the variable at once, a lack of synchronization could result in inaccurate values.
+
+Only one thread can access crucial areas at a time thanks to mutex locks and semaphores, preventing inconsistent outcomes.
 **Conclusion**: 
-
+Throughout several runs, synchronization successfully safeguarded shared resources and guaranteed steady, predictable performance.
 ---
 
 ### Test 2: Exception Testing
-**What I tested**: Checking for ConcurrentModificationException
+**What I tested**: Checking for ConcurrentModificationException occurs during queue operations.
 
 **Testing procedure**: 
-
+Several threads kept adding and removing processes from the ready queue while the scheduler was running.
 **Results**: 
-
+During execution, there was no ConcurrentModificationException.
+Every procedure was properly scheduled, and the program finished smoothly.
 **What this proves**: 
-
+This demonstrates that synchronization techniques appropriately safeguarded shared collections and avoided risky concurrent changes.
 ---
 
 ### Test 3: Correctness Verification
 **What I tested**: Verifying correct final values (total burst time, context switches, etc.)
 
 **Expected values**: 
-
+All 15 processes should complete execution
+Remaining burst times should become 0
+Context switches should increase whenever a process yields the CPU
+Waiting times should be calculated correctly
 **Actual values**: 
+From the execution results:
 
+Total Completed Processes = 15
+Total Context Switches = 30
+Average Waiting Time = 59270ms
+All processes finished with Remaining Time = 0ms
 **Analysis**: 
+The expected scheduler behavior was consistent with the actual values.
 
+Properly preempted and put back in the ready queue were processes whose burst times exceeded the time quantum.
+Smaller burst times allowed for instantaneous completion of processes.
+This attests to the proper implementation of the Round Robin scheduling and synchronization mechanism.
 ---
 
 ### Test 4: Different Scenarios
 **Scenario tested**: [e.g., different time quantum, more processes, etc.]
-
+Using a 4000 ms time quantum, test processes with various burst times and priorities.
 **Purpose**: 
+To verify that the scheduler handles:
 
+Short processes
+Long processes
+Multiple context switches
+Different priorities
+Queue reordering
 **Results**: 
-
+Short processes like P1 and P5 completed in one quantum
+Longer processes such as P2, P7, and P10 required multiple quantums
+Processes were successfully re-added to the ready queue after yielding the CPU
+No deadlocks or synchronization issues occurred
 **What I learned**: 
-
+I discovered that synchronization, particularly when several threads use the same resources, aids in maintaining consistency and fairness during concurrent scheduling processes.
 ---
 
 ## Part 5: Reflection and Learning
